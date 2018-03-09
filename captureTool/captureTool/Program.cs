@@ -4,6 +4,9 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Diagnostics;
 using System.Threading;
+using System.IO;
+
+using System.Windows.Forms;
 
 namespace ConsoleApp1
 {
@@ -20,8 +23,14 @@ namespace ConsoleApp1
 
     class Hello
     {
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
         public class ScreenCapture
         {
+
+
             public Image CaptureScreen()
             {
                 return CaptureWindow(User32.GetDesktopWindow());
@@ -152,31 +161,59 @@ namespace ConsoleApp1
                 Console.WriteLine(PPath.ProcessName.ToString());
             }
 
-            ScreenCapture screencap = new ScreenCapture();
-            IntPtr handle = ScreenCapture.WinGetHandle("Visual");
 
-            screencap.CaptureWindowToFile(handle, @"C:\Users\edmun\Desktop\screenshot.png", ImageFormat.Png);
+
 
             // https://stackoverflow.com/questions/42498440/sendkeys-to-a-specific-program-without-it-being-in-focus
+
+
             while (true)
             {
+                // open a pdf file
+                string file = @"C:\Users\edmund\Desktop\minimal.pdf";
+                ProcessStartInfo pi = new ProcessStartInfo(file);
+                pi.Arguments = Path.GetFileName(file);
+                pi.UseShellExecute = true;
+                pi.WorkingDirectory = Path.GetDirectoryName(file);
+                pi.FileName = "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe";
+                pi.Verb = "OPEN";
+                Process.Start(pi);
+
+                // take the screenshot
+                ScreenCapture screencap = new ScreenCapture();
+                IntPtr handle = ScreenCapture.WinGetHandle("Adobe");
+                screencap.CaptureWindowToFile(handle, @"C:\Users\edmund\Desktop\screenshot.png", ImageFormat.Png);
 
 
-                Process[] processes = Process.GetProcessesByName("chrome");
-                
+                Process[] processes = Process.GetProcessesByName("AcroRd32");
+                /*
                 const UInt32 WM_KEYDOWN = 0x0100;
                 const int VK_F5 = 0x74;
-                Console.WriteLine("ok2");
+                const int VK_LCONTROL = 0xA2;
+                const int WM_KEYUP = 0x0101;
+                */
                 foreach (Process proc in processes)
                 {
-                    Console.WriteLine("ok");
-                    SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, VK_F5, 0);
+                    IntPtr h = proc.MainWindowHandle;
+                    SetForegroundWindow(h);
+                    SendKeys.SendWait("^(l)");
+                    
+                    /*
+                    SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, VK_LCONTROL, 0);
+                    SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, 0x43, 0); // c
+                    Thread.Sleep(1000);
+                    SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, VK_LCONTROL, 0);
+                    SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, 0x43, 0); // c
+                    */ 
+                    Console.WriteLine("sent to " + proc.ToString());
+                    break;
                 }
 
-                Thread.Sleep(5000);
+                Thread.Sleep(10000);
+
             }
 
-    }
+        }
 
     }
 }
