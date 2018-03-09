@@ -7,6 +7,7 @@ using System.Threading;
 using System.IO;
 
 using System.Windows.Forms;
+using IronOcr;
 
 namespace ConsoleApp1
 {
@@ -15,8 +16,6 @@ namespace ConsoleApp1
         const UInt32 WM_KEYDOWN = 0x0100;
         const int VK_F5 = 0x74;
 
-        [DllImport("user32.dll")]
-        public static extern bool PostMessage(IntPtr hWnd, UInt32 Msg, int wParam, int lParam);
 
 
     }
@@ -26,6 +25,12 @@ namespace ConsoleApp1
         [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool PostMessage(IntPtr hWnd, UInt32 Msg, int wParam, int lParam);
+
+        [DllImport("user32.dll", EntryPoint = "ShowWindow", SetLastError = true)]
+        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         public class ScreenCapture
         {
@@ -154,6 +159,28 @@ namespace ConsoleApp1
             }
         }
 
+
+        private static void takescreenshot(string programName, string savePath)
+        {
+            // take the screenshot
+            ScreenCapture screencap = new ScreenCapture();
+            IntPtr handle = ScreenCapture.WinGetHandle(programName);
+            screencap.CaptureWindowToFile(handle, savePath, ImageFormat.Png);
+        }
+
+        private static void launchFile(string fileName, string programName)
+        {
+            // open a pdf file
+            string file = fileName;
+            ProcessStartInfo pi = new ProcessStartInfo(file);
+            pi.Arguments = Path.GetFileName(file);
+            pi.UseShellExecute = true;
+            pi.WorkingDirectory = Path.GetDirectoryName(file);
+            pi.FileName = programName;
+            pi.Verb = "OPEN";
+            Process.Start(pi);
+        }
+
         static void Main()
         {
             foreach (Process PPath in Process.GetProcesses())
@@ -161,56 +188,84 @@ namespace ConsoleApp1
                 Console.WriteLine(PPath.ProcessName.ToString());
             }
 
-
-
-
             // https://stackoverflow.com/questions/42498440/sendkeys-to-a-specific-program-without-it-being-in-focus
-
-
             while (true)
             {
-                // open a pdf file
-                string file = @"C:\Users\edmund\Desktop\minimal.pdf";
-                ProcessStartInfo pi = new ProcessStartInfo(file);
-                pi.Arguments = Path.GetFileName(file);
-                pi.UseShellExecute = true;
-                pi.WorkingDirectory = Path.GetDirectoryName(file);
-                pi.FileName = "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe";
-                pi.Verb = "OPEN";
-                Process.Start(pi);
+                launchFile(@"C:\Users\edmund\Desktop\minimal2.pdf", "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe");
 
-                // take the screenshot
-                ScreenCapture screencap = new ScreenCapture();
-                IntPtr handle = ScreenCapture.WinGetHandle("Adobe");
-                screencap.CaptureWindowToFile(handle, @"C:\Users\edmund\Desktop\screenshot.png", ImageFormat.Png);
-
+                Thread.Sleep(3000);
 
                 Process[] processes = Process.GetProcessesByName("AcroRd32");
+                foreach (Process proc in processes)
+                {
+                    ShowWindow(proc.MainWindowHandle, 3);
+                }
+
+
+                string imagePath = @"C:\Users\edmund\Desktop\screenshot.png";
+
+                takescreenshot("Adobe", imagePath);
+
+                AutoOcr Ocr = new AutoOcr();
+                OcrResult result = Ocr.Read(imagePath);
+                Console.WriteLine(result.Text);
+
                 /*
                 const UInt32 WM_KEYDOWN = 0x0100;
                 const int VK_F5 = 0x74;
                 const int VK_LCONTROL = 0xA2;
                 const int WM_KEYUP = 0x0101;
+
+                SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, VK_LCONTROL, 0);
+                SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, 0x43, 0); // c
+                Thread.Sleep(1000);
+                SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, VK_LCONTROL, 0);
+                SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, 0x43, 0); // c
+
                 */
+                
+                Console.WriteLine(processes.Length);
                 foreach (Process proc in processes)
                 {
                     IntPtr h = proc.MainWindowHandle;
                     SetForegroundWindow(h);
+                    SendKeys.SendWait("{ENTER}");
                     SendKeys.SendWait("^(l)");
-                    
-                    /*
-                    SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, VK_LCONTROL, 0);
-                    SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, 0x43, 0); // c
-                    Thread.Sleep(1000);
-                    SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, VK_LCONTROL, 0);
-                    SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, 0x43, 0); // c
-                    */ 
+
                     Console.WriteLine("sent to " + proc.ToString());
                     break;
                 }
 
-                Thread.Sleep(10000);
+                Thread.Sleep(3000);
 
+                foreach (Process proc in processes)
+                {
+                    IntPtr h = proc.MainWindowHandle;
+                    SetForegroundWindow(h);
+                    SendKeys.SendWait("{ESC}");
+
+                    Console.WriteLine("sent to " + proc.ToString());
+                    break;
+                }
+
+                Thread.Sleep(1000);
+
+                foreach (Process proc in processes)
+                {
+                    try
+                    {
+                        //proc.Close();
+                        proc.Kill();
+                        //proc.CloseMainWindow();
+                        //proc.WaitForExit();
+                    }
+                    catch (System.NullReferenceException)
+                    {
+                        Console.WriteLine("No instance of the app running");
+                    }
+                }
+
+                Thread.Sleep(5000);
             }
 
         }
