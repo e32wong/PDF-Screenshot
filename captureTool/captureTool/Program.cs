@@ -193,6 +193,24 @@ namespace ConsoleApp1
             }
         }
 
+        private static void killProcess(Process[] processes)
+        {
+            foreach (Process proc in processes)
+            {
+                try
+                {
+                    //proc.Close();
+                    proc.Kill();
+                    //proc.CloseMainWindow();
+                    //proc.WaitForExit();
+                }
+                catch (System.NullReferenceException)
+                {
+                    Console.WriteLine("No instance of the app running");
+                }
+            }
+        }
+
         private static Boolean checkErrorMessage(string imagePath)
         {
             Boolean hasError = false;
@@ -244,7 +262,6 @@ namespace ConsoleApp1
             }
 
             // https://stackoverflow.com/questions/42498440/sendkeys-to-a-specific-program-without-it-being-in-focus
-
             launchFile(@"C:\Users\edmund\Desktop\minimal.pdf", "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe");
 
             Thread.Sleep(3000);
@@ -285,50 +302,19 @@ namespace ConsoleApp1
                 sendKeyToApplication(processes, "^(l)");
 
                 Thread.Sleep(3000);
-
-                foreach (Process proc in processes)
-                {
-                    IntPtr h = proc.MainWindowHandle;
-                    SetForegroundWindow(h);
-                    SendKeys.SendWait("{ESC}");
-
-                    Console.WriteLine("sent to " + proc.ToString());
-                    break;
-                }
-
-                Thread.Sleep(1000);
-
-                foreach (Process proc in processes)
-                {
-                    try
-                    {
-                        //proc.Close();
-                        proc.Kill();
-                        //proc.CloseMainWindow();
-                        //proc.WaitForExit();
-                    }
-                    catch (System.NullReferenceException)
-                    {
-                        Console.WriteLine("No instance of the app running");
-                    }
-                }
+                
+                sendKeyToApplication(processes, "{ESC}");
+                sendKeyToApplication(processes, "%{F4}");
             } else
             {
-                // send enter command only
-                Console.WriteLine("Total number of processes: " + processes.Length);
-                foreach (Process proc in processes)
-                {
-                    IntPtr h = proc.MainWindowHandle;
-                    SetForegroundWindow(h);
-                    SendKeys.SendWait("{ENTER}");
-                    SendKeys.SendWait("%{F4}");
+                // send enter command only and close it
+                sendKeyToApplication(processes, "{ENTER}");
+                sendKeyToApplication(processes, "%{F4}");
 
-                    Console.WriteLine("sent to " + proc.ToString());
-                    break;
-                }
+                //killProcess(processes);
             }
- 
 
+            Console.WriteLine("Press any key to exit the tool..");
             Console.Read();
         }
 
