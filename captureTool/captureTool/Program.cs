@@ -181,6 +181,61 @@ namespace ConsoleApp1
             Process.Start(pi);
         }
 
+        private static void sendKeyToApplication(Process[] processes, string command)
+        {
+            foreach (Process proc in processes)
+            {
+                IntPtr h = proc.MainWindowHandle;
+                SetForegroundWindow(h);
+                SendKeys.SendWait(command);
+                Console.WriteLine("sent to " + proc.ToString());
+                break;
+            }
+        }
+
+        private static Boolean checkErrorMessage(string imagePath)
+        {
+            Boolean hasError = false;
+
+            /*
+            Console.WriteLine("Checking for error messages...");
+            AutoOcr Ocr = new AutoOcr();
+            OcrResult result = Ocr.Read(imagePath);
+            Console.WriteLine("Result:");
+            Console.WriteLine(result.Text);
+            */
+
+            AdvancedOcr OcrAdvanced = new AdvancedOcr()
+            {
+                CleanBackgroundNoise = false,
+                EnhanceContrast = false,
+                EnhanceResolution = false,
+                Language = IronOcr.Languages.English.OcrLanguagePack,
+                Strategy = IronOcr.AdvancedOcr.OcrStrategy.Advanced,
+                ColorSpace = AdvancedOcr.OcrColorSpace.Color,
+                DetectWhiteTextOnDarkBackgrounds = true,
+                InputImageType = AdvancedOcr.InputTypes.AutoDetect,
+                RotateAndStraighten = false,
+                ReadBarCodes = false,
+                ColorDepth = 4
+            };
+            OcrResult result = OcrAdvanced.Read(imagePath);
+            Console.WriteLine(result.Text);
+
+            String[] errorTerms = new string[] { "File", "Edit", "Home", "Tools" };
+            String resultStr = result.Text;
+            foreach (String badTerm in errorTerms)
+            {
+                if (resultStr.Contains(badTerm))
+                {
+                    Console.WriteLine("detected error message with term: " + badTerm);
+                    hasError = true;
+                }
+            }
+
+            return hasError;
+        }
+
         static void Main()
         {
             foreach (Process PPath in Process.GetProcesses())
@@ -189,52 +244,45 @@ namespace ConsoleApp1
             }
 
             // https://stackoverflow.com/questions/42498440/sendkeys-to-a-specific-program-without-it-being-in-focus
-            while (true)
+
+            launchFile(@"C:\Users\edmund\Desktop\minimal.pdf", "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe");
+
+            Thread.Sleep(3000);
+
+            Process[] processes = Process.GetProcessesByName("AcroRd32");
+            foreach (Process proc in processes)
             {
-                launchFile(@"C:\Users\edmund\Desktop\minimal2.pdf", "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe");
-
-                Thread.Sleep(3000);
-
-                Process[] processes = Process.GetProcessesByName("AcroRd32");
-                foreach (Process proc in processes)
-                {
-                    ShowWindow(proc.MainWindowHandle, 3);
-                }
+                ShowWindow(proc.MainWindowHandle, 3);
+            }
 
 
-                string imagePath = @"C:\Users\edmund\Desktop\screenshot.png";
+            string imagePath = @"C:\Users\edmund\Desktop\screenshot.png";
 
-                takescreenshot("Adobe", imagePath);
+            takescreenshot("Adobe", imagePath);
 
-                AutoOcr Ocr = new AutoOcr();
-                OcrResult result = Ocr.Read(imagePath);
-                Console.WriteLine(result.Text);
+            // check if the screenshot located an error message
+            Boolean hasError = checkErrorMessage(imagePath);
 
-                /*
-                const UInt32 WM_KEYDOWN = 0x0100;
-                const int VK_F5 = 0x74;
-                const int VK_LCONTROL = 0xA2;
-                const int WM_KEYUP = 0x0101;
+            /*
+            const UInt32 WM_KEYDOWN = 0x0100;
+            const int VK_F5 = 0x74;
+            const int VK_LCONTROL = 0xA2;
+            const int WM_KEYUP = 0x0101;
 
-                SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, VK_LCONTROL, 0);
-                SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, 0x43, 0); // c
-                Thread.Sleep(1000);
-                SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, VK_LCONTROL, 0);
-                SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, 0x43, 0); // c
+            SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, VK_LCONTROL, 0);
+            SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, 0x43, 0); // c
+            Thread.Sleep(1000);
+            SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, VK_LCONTROL, 0);
+            SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, 0x43, 0); // c
 
-                */
-                
-                Console.WriteLine(processes.Length);
-                foreach (Process proc in processes)
-                {
-                    IntPtr h = proc.MainWindowHandle;
-                    SetForegroundWindow(h);
-                    SendKeys.SendWait("{ENTER}");
-                    SendKeys.SendWait("^(l)");
+            */
 
-                    Console.WriteLine("sent to " + proc.ToString());
-                    break;
-                }
+            if (!hasError)
+            {
+                // send enter command and full screen command
+                Console.WriteLine("Total number of processes: " + processes.Length);
+                sendKeyToApplication(processes, "{ENTER}");
+                sendKeyToApplication(processes, "^(l)");
 
                 Thread.Sleep(3000);
 
@@ -264,10 +312,24 @@ namespace ConsoleApp1
                         Console.WriteLine("No instance of the app running");
                     }
                 }
+            } else
+            {
+                // send enter command only
+                Console.WriteLine("Total number of processes: " + processes.Length);
+                foreach (Process proc in processes)
+                {
+                    IntPtr h = proc.MainWindowHandle;
+                    SetForegroundWindow(h);
+                    SendKeys.SendWait("{ENTER}");
+                    SendKeys.SendWait("%{F4}");
 
-                Thread.Sleep(5000);
+                    Console.WriteLine("sent to " + proc.ToString());
+                    break;
+                }
             }
+ 
 
+            Console.Read();
         }
 
     }
