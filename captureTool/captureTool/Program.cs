@@ -188,7 +188,7 @@ namespace ConsoleApp1
                 IntPtr h = proc.MainWindowHandle;
                 SetForegroundWindow(h);
                 SendKeys.SendWait(command);
-                Console.WriteLine("sent to " + proc.ToString());
+                //Console.WriteLine("sent to " + proc.ToString());
                 break;
             }
         }
@@ -309,40 +309,58 @@ namespace ConsoleApp1
 
             Thread.Sleep(3000);
 
-            // try full screen it
-            sendKeyToApplication(processes, "{ENTER}");
-            sendKeyToApplication(processes, "^(l)");
+            processes = Process.GetProcessesByName("AcroRd32");
+            if (processes.Length == 2)
+            {
+                // try full screen it
+                sendKeyToApplication(processes, "{ENTER}");
+                Thread.Sleep(200);
+                sendKeyToApplication(processes, "^(l)");
 
-            Thread.Sleep(2000);
+                Thread.Sleep(2000);
 
-            // take screenshot
-            takescreenshot("Adobe", screenshotSavePath);
-            //CaptureScreenToFile(@"C:\Users\edmund\Desktop\screenshot.png", ImageFormat.Png);
-            string cropPath = @"C:\Users\edmund\Desktop\cropped.png";
+                // take screenshot
+                takescreenshot("Adobe", screenshotSavePath);
+                //CaptureScreenToFile(@"C:\Users\edmund\Desktop\screenshot.png", ImageFormat.Png);
+                //string cropPath = @"C:\Users\edmund\Desktop\cropped.png";
 
-            //CropImage(0, 0, 300, 100, screenshotSavePath, cropPath);
-            // check if the screenshot located an error message
-            //Boolean hasError = checkErrorMessage(cropPath);
+                //CropImage(0, 0, 300, 100, screenshotSavePath, cropPath);
+                // check if the screenshot located an error message
+                //Boolean hasError = checkErrorMessage(cropPath);
 
-            // close the application depending if there is an error
+                // close the application depending if there is an error
 
-            // send enter command and full screen command
-            Console.WriteLine("Closing the app");
-            sendKeyToApplication(processes, "{ESC}");
-            Thread.Sleep(2000);
-            sendKeyToApplication(processes, "{ENTER}");
-            Thread.Sleep(200);
-            sendKeyToApplication(processes, "%{F4}");
-            Thread.Sleep(200);
-            sendKeyToApplication(processes, "n");
+                // send enter command and full screen command
+                Console.WriteLine("Closing the app");
+                sendKeyToApplication(processes, "{ESC}");
+                Thread.Sleep(2000);
+                sendKeyToApplication(processes, "{ENTER}");
+                Thread.Sleep(200);
+                sendKeyToApplication(processes, "%{F4}");
+                Thread.Sleep(200);
 
-            Thread.Sleep(2000);
+                processes = Process.GetProcessesByName("AcroRd32");
+                if (processes.Length == 2)
+                {
+                    sendKeyToApplication(processes, "n");
+                }
+
+                Thread.Sleep(1000);
+
+            }
+
+            // kill and clean environment before we start the screenshot
+            processes = Process.GetProcessesByName("AcroRd32");
+            killProcess(processes);
+            
+            Thread.Sleep(1000);
         }
 
         private static void batchProcess()
         {
             // get list of files from folder
             string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\masterPool\");
+            //string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\test\");
             string screenshotFolder = @"C:\Users\edmund\Desktop\testSuite\screenshot\";
 
             // check if screenshot folder exists
