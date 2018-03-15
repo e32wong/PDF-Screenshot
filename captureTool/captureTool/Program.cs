@@ -222,7 +222,7 @@ namespace ConsoleApp1
             Console.WriteLine("Result:");
             Console.WriteLine(result.Text);
             */
-
+            
             AdvancedOcr OcrAdvanced = new AdvancedOcr()
             {
                 CleanBackgroundNoise = false,
@@ -250,12 +250,137 @@ namespace ConsoleApp1
                     hasError = true;
                 }
             }
-
+            
             return hasError;
+        }
+
+        private static Boolean CropImage(int x, int y, int width, int height, string imagePath, string cropPath)
+        {
+            Boolean hasFailed = false;
+
+            //using (var originalImage = new Bitmap(imagePath))
+            var originalImage = new Bitmap(imagePath);
+            // check dimension of the file
+            if (originalImage.Height == 1 && originalImage.Width == 1)
+            {
+                hasFailed = true;
+            }
+
+            if (hasFailed == false)
+            {
+                Bitmap croppedImage;
+                Rectangle crop = new Rectangle(x, y, width, height);
+                croppedImage = originalImage.Clone(crop, originalImage.PixelFormat);
+                //croppedImage = new Bitmap(originalImage);
+                croppedImage.Save(cropPath, ImageFormat.Png);
+                croppedImage.Dispose();
+                croppedImage = null;
+            }
+
+            originalImage.Dispose();
+            originalImage = null;
+
+            return hasFailed;
+        }
+
+        private static void processFile(string targetFile, string screenshotFolder)
+        {
+            /*
+            foreach (Process PPath in Process.GetProcesses())
+            {
+                Console.WriteLine(PPath.ProcessName.ToString());
+            }
+            */
+
+            String pureFileName = Path.GetFileName(targetFile);
+            String screenshotSavePath = screenshotFolder + pureFileName.Substring(0, pureFileName.Length - 4) + "-acroread.png";
+            //String screenshotSavePath = screenshotFolder + "screenshot.png";
+            Console.WriteLine(screenshotSavePath);
+
+            // https://stackoverflow.com/questions/42498440/sendkeys-to-a-specific-program-without-it-being-in-focus
+            launchFile(targetFile, "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe");
+
+
+            Process[] processes = Process.GetProcessesByName("AcroRd32");
+            foreach (Process proc in processes)
+            {
+                ShowWindow(proc.MainWindowHandle, 3);
+            }
+
+            Thread.Sleep(3000);
+
+            // try full screen it
+            sendKeyToApplication(processes, "{ENTER}");
+            sendKeyToApplication(processes, "^(l)");
+
+            Thread.Sleep(2000);
+
+            // take screenshot
+            takescreenshot("Adobe", screenshotSavePath);
+            //CaptureScreenToFile(@"C:\Users\edmund\Desktop\screenshot.png", ImageFormat.Png);
+            string cropPath = @"C:\Users\edmund\Desktop\cropped.png";
+
+            //CropImage(0, 0, 300, 100, screenshotSavePath, cropPath);
+            // check if the screenshot located an error message
+            //Boolean hasError = checkErrorMessage(cropPath);
+
+            // close the application depending if there is an error
+
+            // send enter command and full screen command
+            Console.WriteLine("Closing the app");
+            sendKeyToApplication(processes, "{ESC}");
+            Thread.Sleep(2000);
+            sendKeyToApplication(processes, "{ENTER}");
+            Thread.Sleep(200);
+            sendKeyToApplication(processes, "%{F4}");
+            Thread.Sleep(200);
+            sendKeyToApplication(processes, "n");
+
+            Thread.Sleep(2000);
+        }
+
+        private static void batchProcess()
+        {
+            // get list of files from folder
+            string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\masterPool\");
+            string screenshotFolder = @"C:\Users\edmund\Desktop\testSuite\screenshot\";
+
+            // check if screenshot folder exists
+            try
+            {
+                if (!Directory.Exists(screenshotFolder))
+                {
+                    Console.WriteLine("deleting the old folder");
+                    Directory.CreateDirectory(screenshotFolder);
+                }
+                else
+                {
+                    Console.WriteLine("deleting the old folder and recreating it");
+                    Directory.Delete(screenshotFolder, true);
+                    Directory.CreateDirectory(screenshotFolder);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception with the screenshot folder:" + e);
+            }
+
+            // kill and clean environment before we start the screenshot
+            Process[] processes = Process.GetProcessesByName("AcroRd32");
+            killProcess(processes);
+
+            foreach (string pdfFilePath in filePaths)
+            {
+                Console.WriteLine(pdfFilePath);
+                processFile(pdfFilePath, screenshotFolder);
+            }
+
         }
 
         static void Main()
         {
+            batchProcess();
+            /*
             foreach (Process PPath in Process.GetProcesses())
             {
                 Console.WriteLine(PPath.ProcessName.ToString());
@@ -280,20 +405,6 @@ namespace ConsoleApp1
             // check if the screenshot located an error message
             Boolean hasError = checkErrorMessage(imagePath);
 
-            /*
-            const UInt32 WM_KEYDOWN = 0x0100;
-            const int VK_F5 = 0x74;
-            const int VK_LCONTROL = 0xA2;
-            const int WM_KEYUP = 0x0101;
-
-            SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, VK_LCONTROL, 0);
-            SendKey.PostMessage(proc.MainWindowHandle, WM_KEYDOWN, 0x43, 0); // c
-            Thread.Sleep(1000);
-            SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, VK_LCONTROL, 0);
-            SendKey.PostMessage(proc.MainWindowHandle, WM_KEYUP, 0x43, 0); // c
-
-            */
-
             if (!hasError)
             {
                 // send enter command and full screen command
@@ -313,9 +424,10 @@ namespace ConsoleApp1
 
                 //killProcess(processes);
             }
-
+            */
             Console.WriteLine("Press any key to exit the tool..");
             Console.Read();
+            
         }
 
     }
