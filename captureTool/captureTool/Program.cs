@@ -160,7 +160,7 @@ namespace ConsoleApp1
         }
 
 
-        private static void takescreenshot(string programName, string savePath)
+        private static void screenshotSpecificWindow(string programName, string savePath)
         {
             // take the screenshot
             ScreenCapture screencap = new ScreenCapture();
@@ -283,6 +283,32 @@ namespace ConsoleApp1
             return hasFailed;
         }
 
+        private static void screenshotEntireScreen(String savePath)
+        {
+            var bmpScreenshot = new Bitmap(Screen.PrimaryScreen.Bounds.Width,
+                Screen.PrimaryScreen.Bounds.Height,
+                PixelFormat.Format32bppArgb);
+            var gfxScreenshot = Graphics.FromImage(bmpScreenshot);
+            gfxScreenshot.CopyFromScreen(0, 0,
+                0,
+                0,
+                Screen.PrimaryScreen.Bounds.Size);
+            bmpScreenshot.Save(savePath, ImageFormat.Png);
+        }
+
+        private static float getCpuUsage()
+        {
+            float usage = 0;
+
+            PerformanceCounter totalCPU = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            totalCPU.NextValue(); // will always be 0
+            System.Threading.Thread.Sleep(1000);
+            usage = totalCPU.NextValue();
+            Console.WriteLine(usage);
+
+            return usage;
+        }
+
         private static void processFile(string targetFile, string screenshotFolder)
         {
             /*
@@ -309,10 +335,26 @@ namespace ConsoleApp1
 
             Thread.Sleep(3000);
 
+            int numTries = 0;
+            while (numTries < 10)
+            {
+                float usageValue = getCpuUsage();
+                if (usageValue > 25)
+                {
+                    Thread.Sleep(1000);
+                } else
+                {
+                    break;
+                }
+                numTries = numTries + 1;
+            }
+
             processes = Process.GetProcessesByName("AcroRd32");
             if (processes.Length == 2)
             {
                 // try full screen it
+                sendKeyToApplication(processes, "{ENTER}");
+                Thread.Sleep(200);
                 sendKeyToApplication(processes, "{ENTER}");
                 Thread.Sleep(200);
                 sendKeyToApplication(processes, "^(l)");
@@ -320,8 +362,8 @@ namespace ConsoleApp1
                 Thread.Sleep(2000);
 
                 // take screenshot
-                takescreenshot("Adobe", screenshotSavePath);
-                //CaptureScreenToFile(@"C:\Users\edmund\Desktop\screenshot.png", ImageFormat.Png);
+                //screenshotSpecificWindow("Adobe", screenshotSavePath);
+                screenshotEntireScreen(screenshotSavePath);
                 //string cropPath = @"C:\Users\edmund\Desktop\cropped.png";
 
                 //CropImage(0, 0, 300, 100, screenshotSavePath, cropPath);
@@ -336,8 +378,12 @@ namespace ConsoleApp1
                 Thread.Sleep(2000);
                 sendKeyToApplication(processes, "{ENTER}");
                 Thread.Sleep(200);
-                sendKeyToApplication(processes, "%{F4}");
-                Thread.Sleep(200);
+                processes = Process.GetProcessesByName("AcroRd32");
+                if (processes.Length == 2)
+                {
+                    sendKeyToApplication(processes, "%{F4}");
+                    Thread.Sleep(1000);
+                }
 
                 processes = Process.GetProcessesByName("AcroRd32");
                 if (processes.Length == 2)
@@ -359,8 +405,8 @@ namespace ConsoleApp1
         private static void batchProcess()
         {
             // get list of files from folder
-            string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\masterPool\");
-            //string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\test\");
+            //string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\masterPool\");
+            string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\files\chrome\");
             string screenshotFolder = @"C:\Users\edmund\Desktop\testSuite\screenshot\";
 
             // check if screenshot folder exists
@@ -387,8 +433,10 @@ namespace ConsoleApp1
             Process[] processes = Process.GetProcessesByName("AcroRd32");
             killProcess(processes);
 
+            int index = 1;
             foreach (string pdfFilePath in filePaths)
             {
+                Console.WriteLine(index + "/" + filePaths.Length);
                 Console.WriteLine(pdfFilePath);
                 processFile(pdfFilePath, screenshotFolder);
             }
