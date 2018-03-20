@@ -309,6 +309,24 @@ namespace ConsoleApp1
             return usage;
         }
 
+        private static void waitForCPU()
+        {
+            int numTries = 0;
+            while (numTries < 10)
+            {
+                float usageValue = getCpuUsage();
+                if (usageValue > 25)
+                {
+                    Thread.Sleep(1000);
+                }
+                else
+                {
+                    break;
+                }
+                numTries = numTries + 1;
+            }
+        }
+
         private static void processFile(string targetFile, string screenshotFolder)
         {
             /*
@@ -335,19 +353,7 @@ namespace ConsoleApp1
 
             Thread.Sleep(3000);
 
-            int numTries = 0;
-            while (numTries < 10)
-            {
-                float usageValue = getCpuUsage();
-                if (usageValue > 25)
-                {
-                    Thread.Sleep(1000);
-                } else
-                {
-                    break;
-                }
-                numTries = numTries + 1;
-            }
+            waitForCPU();
 
             processes = Process.GetProcessesByName("AcroRd32");
             if (processes.Length == 2)
@@ -362,8 +368,8 @@ namespace ConsoleApp1
                 Thread.Sleep(2000);
 
                 // take screenshot
-                //screenshotSpecificWindow("Adobe", screenshotSavePath);
-                screenshotEntireScreen(screenshotSavePath);
+                screenshotSpecificWindow("Adobe", screenshotSavePath);
+                //screenshotEntireScreen(screenshotSavePath);
                 //string cropPath = @"C:\Users\edmund\Desktop\cropped.png";
 
                 //CropImage(0, 0, 300, 100, screenshotSavePath, cropPath);
@@ -389,10 +395,8 @@ namespace ConsoleApp1
                 if (processes.Length == 2)
                 {
                     sendKeyToApplication(processes, "n");
+                    Thread.Sleep(1000);
                 }
-
-                Thread.Sleep(1000);
-
             }
 
             // kill and clean environment before we start the screenshot
@@ -406,7 +410,7 @@ namespace ConsoleApp1
         {
             // get list of files from folder
             //string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\masterPool\");
-            string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\files\chrome\");
+            string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\files\chrome\", "*.pdf");
             string screenshotFolder = @"C:\Users\edmund\Desktop\testSuite\screenshot\";
 
             // check if screenshot folder exists
@@ -421,6 +425,7 @@ namespace ConsoleApp1
                 {
                     Console.WriteLine("deleting the old folder and recreating it");
                     Directory.Delete(screenshotFolder, true);
+                    Thread.Sleep(5000);
                     Directory.CreateDirectory(screenshotFolder);
                 }
             }
