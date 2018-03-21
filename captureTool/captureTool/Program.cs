@@ -168,17 +168,26 @@ namespace ConsoleApp1
             screencap.CaptureWindowToFile(handle, savePath, ImageFormat.Png);
         }
 
-        private static void launchFile(string fileName, string programName)
+        private static Boolean launchFile(string fileName, string programName)
         {
-            // open a pdf file
-            string file = fileName;
-            ProcessStartInfo pi = new ProcessStartInfo(file);
-            pi.Arguments = Path.GetFileName(file);
-            pi.UseShellExecute = true;
-            pi.WorkingDirectory = Path.GetDirectoryName(file);
-            pi.FileName = programName;
-            pi.Verb = "OPEN";
-            Process.Start(pi);
+            try
+            {
+                // open a pdf file
+                string file = fileName;
+                ProcessStartInfo pi = new ProcessStartInfo(file);
+                pi.Arguments = Path.GetFileName(file);
+                pi.UseShellExecute = true;
+                pi.WorkingDirectory = Path.GetDirectoryName(file);
+                pi.FileName = programName;
+                pi.Verb = "OPEN";
+                Process.Start(pi);
+                return true;
+            } catch (Exception e)
+            {
+                Console.WriteLine("Error at opening file");
+                return false;
+            }
+
         }
 
         private static void sendKeyToApplication(Process[] processes, string command)
@@ -204,9 +213,11 @@ namespace ConsoleApp1
                     //proc.CloseMainWindow();
                     //proc.WaitForExit();
                 }
-                catch (System.NullReferenceException)
+                catch (Exception e)
                 {
                     Console.WriteLine("No instance of the app running");
+                    Console.WriteLine(e.ToString());
+
                 }
             }
         }
@@ -342,8 +353,11 @@ namespace ConsoleApp1
             Console.WriteLine(screenshotSavePath);
 
             // https://stackoverflow.com/questions/42498440/sendkeys-to-a-specific-program-without-it-being-in-focus
-            launchFile(targetFile, "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe");
-
+            Boolean status = launchFile(targetFile, "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe");
+            if (status == false)
+            {
+                return;
+            }
 
             Process[] processes = Process.GetProcessesByName("AcroRd32");
             foreach (Process proc in processes)
