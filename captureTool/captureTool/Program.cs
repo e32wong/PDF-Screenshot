@@ -314,7 +314,7 @@ namespace ConsoleApp1
             totalCPU.NextValue(); // will always be 0
             System.Threading.Thread.Sleep(1000);
             usage = totalCPU.NextValue();
-            Console.WriteLine(usage);
+            logMessage("CPU @ " + usage + "%\n");
 
             return usage;
         }
@@ -346,83 +346,128 @@ namespace ConsoleApp1
             }
             */
 
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+
+            Boolean status = true;
+
             String pureFileName = Path.GetFileName(targetFile);
             String screenshotSavePath = screenshotFolder + pureFileName.Substring(0, pureFileName.Length - 4) + "-acroread.png";
             //String screenshotSavePath = screenshotFolder + "screenshot.png";
             Console.WriteLine(screenshotSavePath);
 
             // https://stackoverflow.com/questions/42498440/sendkeys-to-a-specific-program-without-it-being-in-focus
-            Boolean status = launchFile(targetFile, "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe");
-            if (status == false)
+            Boolean launchSuccessful = launchFile(targetFile, "C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe");
+            if (launchSuccessful == false)
             {
-                return;
-            }
-
-            Thread.Sleep(3000);
-            Process[] processes = Process.GetProcessesByName("AcroRd32");
-            foreach (Process proc in processes)
+                status = false;
+            } else
             {
-                ShowWindow(proc.MainWindowHandle, 3);
-            }
+                Thread.Sleep(3000);
+                Process[] processes = Process.GetProcessesByName("AcroRd32");
+                foreach (Process proc in processes)
+                {
+                    ShowWindow(proc.MainWindowHandle, 3);
+                }
 
-            waitForCPU();
-
-            processes = Process.GetProcessesByName("AcroRd32");
-            if (processes.Length > 0)
-            {
-                // try full screen it
-                sendKeyToApplication(processes, "{ENTER}");
-                Thread.Sleep(200);
-                sendKeyToApplication(processes, "{ENTER}");
-                Thread.Sleep(200);
-                sendKeyToApplication(processes, "^(l)");
-
-                Thread.Sleep(2000);
-
-                // take screenshot
-                screenshotSpecificWindow("Adobe Acrobat Reader DC", screenshotSavePath);
-                //screenshotEntireScreen(screenshotSavePath);
-                //string cropPath = @"C:\Users\edmund\Desktop\cropped.png";
-
-                //CropImage(0, 0, 300, 100, screenshotSavePath, cropPath);
-                // check if the screenshot located an error message
-                //Boolean hasError = checkErrorMessage(cropPath);
-
-                // close the application depending if there is an error
-
-                // send enter command and full screen command
-                Console.WriteLine("Closing the app");
+                // send esc in the case that it crashed
                 sendKeyToApplication(processes, "{ESC}");
-                Thread.Sleep(2000);
-                sendKeyToApplication(processes, "{ENTER}");
                 Thread.Sleep(200);
-                processes = Process.GetProcessesByName("AcroRd32");
-                if (processes.Length > 0)
-                {
-                    sendKeyToApplication(processes, "%{F4}");
-                    Thread.Sleep(1000);
-                }
+
+                waitForCPU();
 
                 processes = Process.GetProcessesByName("AcroRd32");
                 if (processes.Length > 0)
                 {
-                    sendKeyToApplication(processes, "n");
-                    Thread.Sleep(1000);
-                }
-            } 
+                    File.AppendAllText(@"C:\Users\edmund\Desktop\log.txt", "Found application!\n");
 
-            // kill and clean environment before we start the screenshot
-            processes = Process.GetProcessesByName("AcroRd32");
-            killProcess(processes);
-            
+                    // try full screen it
+                    sendKeyToApplication(processes, "{ENTER}");
+                    Thread.Sleep(200);
+                    sendKeyToApplication(processes, "{ENTER}");
+                    Thread.Sleep(200);
+                    sendKeyToApplication(processes, "^(l)");
+
+                    Thread.Sleep(2000);
+
+                    // take screenshot
+                    screenshotSpecificWindow("Adobe Acrobat Reader DC", screenshotSavePath);
+                    //screenshotEntireScreen(screenshotSavePath);
+                    //string cropPath = @"C:\Users\edmund\Desktop\cropped.png";
+
+                    //CropImage(0, 0, 300, 100, screenshotSavePath, cropPath);
+                    // check if the screenshot located an error message
+                    //Boolean hasError = checkErrorMessage(cropPath);
+
+                    // close the application depending if there is an error
+
+                    // send enter command and full screen command
+                    logMessage("Closing the app\n");
+                    sendKeyToApplication(processes, "{ESC}");
+                    Thread.Sleep(1000);
+                    sendKeyToApplication(processes, "{ENTER}");
+                    Thread.Sleep(200);
+                    processes = Process.GetProcessesByName("AcroRd32");
+                    if (processes.Length == 0)
+                    {
+                        File.AppendAllText(@"C:\Users\edmund\Desktop\log.txt", "Crashed after full screen\n");
+                        status = false;
+                    }
+                    else
+                    {
+                        foreach (Process proc in processes)
+                        {
+                            // ShowWindow(proc.MainWindowHandle, 3);
+
+                            sendKeyToApplication(processes, "%{F4}");
+                            Thread.Sleep(1000);
+
+                            // sometimes it is blocked asking if you want to save
+                            processes = Process.GetProcessesByName("AcroRd32");
+                            if (processes.Length > 0)
+                            {
+                                sendKeyToApplication(processes, "n");
+                                Thread.Sleep(1000);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    logMessage("Crashed right after launch\n");
+                    status = false;
+                }
+
+                // kill and clean environment before we start the screenshot
+                processes = Process.GetProcessesByName("AcroRd32");
+                killProcess(processes);
+            }
+
             Thread.Sleep(1000);
+
+            watch.Stop();
+            long elapsedMs = watch.ElapsedMilliseconds;
+
+            logMessage(status.ToString());
+            writeToCSV(Path.GetFileName(targetFile), status, elapsedMs);
+        }
+
+        private static void logMessage(String message)
+        {
+            Console.WriteLine(message);
+            File.AppendAllText(@"C:\Users\edmund\Desktop\log.txt", message);
+        }
+
+        private static void writeToCSV(String fileName, Boolean result, long elapsedMs)
+        {
+            var newLine = string.Format("{0},{1},{2}\n", fileName, (float)elapsedMs / 1000, result);
+            File.AppendAllText(@"C:\Users\edmund\Desktop\log.csv", newLine);
         }
 
         private static void batchProcess()
         {
             // get list of files from folder
-            string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\files\chrome\", "*.pdf");
-            //string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\test2\", "*.pdf");
+            //string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\files\chrome\", "*.pdf");
+            string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\test2\", "*.pdf");
             string screenshotFolder = @"C:\Users\edmund\Desktop\testSuite\screenshot\";
 
             // check if screenshot folder exists
@@ -450,17 +495,30 @@ namespace ConsoleApp1
             Process[] processes = Process.GetProcessesByName("AcroRd32");
             killProcess(processes);
 
+            // remove the old log file
+            if (File.Exists(@"C:\Users\edmund\Desktop\log.txt"))
+            {
+                File.Delete(@"C:\Users\edmund\Desktop\log.txt");
+            }
+            if (File.Exists(@"C:\Users\edmund\Desktop\log.csv"))
+            {
+                File.Delete(@"C:\Users\edmund\Desktop\log.csv");
+            }
+
             int index = 1;
             foreach (string pdfFilePath in filePaths)
             {
-                Console.WriteLine(index + "/" + filePaths.Length);
-                Console.WriteLine(pdfFilePath);
+                logMessage("\n\n" + index + "/" + filePaths.Length + "\n");
+                logMessage(pdfFilePath + "\n");
+
                 processFile(pdfFilePath, screenshotFolder);
 
                 index = index + 1;
             }
 
         }
+
+
 
         static void Main()
         {
