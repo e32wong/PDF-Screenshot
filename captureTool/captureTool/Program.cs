@@ -159,6 +159,19 @@ namespace ConsoleApp1
             }
         }
 
+        public static IntPtr WinGetHandle2(string wName)
+        {
+            IntPtr hWnd = IntPtr.Zero;
+            foreach (Process pList in Process.GetProcesses())
+            {
+                if (pList.MainWindowTitle.Contains(wName))
+                {
+                    hWnd = pList.MainWindowHandle;
+                    Console.WriteLine(hWnd.ToString());
+                }
+            }
+            return hWnd;
+        }
 
         private static void screenshotSpecificWindow(string programName, string savePath)
         {
@@ -325,7 +338,7 @@ namespace ConsoleApp1
             while (numTries < 10)
             {
                 float usageValue = getCpuUsage();
-                if (usageValue > 20)
+                if (usageValue > 15)
                 {
                     Thread.Sleep(1000);
                 }
@@ -362,7 +375,7 @@ namespace ConsoleApp1
                 status = false;
             } else
             {
-                Thread.Sleep(3000);
+                Thread.Sleep(1000);
                 Process[] processes = Process.GetProcessesByName("AcroRd32");
                 foreach (Process proc in processes)
                 {
@@ -375,6 +388,8 @@ namespace ConsoleApp1
 
                 waitForCPU();
 
+                Thread.Sleep(1000);
+
                 processes = Process.GetProcessesByName("AcroRd32");
                 if (processes.Length > 0)
                 {
@@ -386,8 +401,7 @@ namespace ConsoleApp1
                     sendKeyToApplication(processes, "{ENTER}");
                     Thread.Sleep(200);
                     sendKeyToApplication(processes, "^(l)");
-
-                    Thread.Sleep(2000);
+                    Thread.Sleep(1000);
 
                     // take screenshot
                     screenshotSpecificWindow("Adobe Acrobat Reader DC", screenshotSavePath);
@@ -403,7 +417,7 @@ namespace ConsoleApp1
                     // send enter command and full screen command
                     logMessage("Closing the app\n");
                     sendKeyToApplication(processes, "{ESC}");
-                    Thread.Sleep(1000);
+                    Thread.Sleep(500);
                     sendKeyToApplication(processes, "{ENTER}");
                     Thread.Sleep(200);
                     processes = Process.GetProcessesByName("AcroRd32");
@@ -467,7 +481,7 @@ namespace ConsoleApp1
         {
             // get list of files from folder
             //string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\files\chrome\", "*.pdf");
-            string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\test2\", "*.pdf");
+            string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\masterPool\", "*.pdf");
             string screenshotFolder = @"C:\Users\edmund\Desktop\testSuite\screenshot\";
 
             // check if screenshot folder exists
