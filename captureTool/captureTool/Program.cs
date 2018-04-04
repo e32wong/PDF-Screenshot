@@ -332,10 +332,12 @@ namespace ConsoleApp1
             return usage;
         }
 
-        private static void waitForCPU()
+        private static Boolean waitForCPU(int numTriesMax)
         {
+            Boolean status = false;
+
             int numTries = 0;
-            while (numTries < 10)
+            while (numTries < numTriesMax)
             {
                 float usageValue = getCpuUsage();
                 if (usageValue > 15)
@@ -344,10 +346,13 @@ namespace ConsoleApp1
                 }
                 else
                 {
+                    status = true;
                     break;
                 }
                 numTries = numTries + 1;
             }
+
+            return status;
         }
 
         private static void processFile(string targetFile, string screenshotFolder)
@@ -386,90 +391,102 @@ namespace ConsoleApp1
                 sendKeyToApplication(processes, "{ESC}");
                 Thread.Sleep(200);
 
-                waitForCPU();
-
-                Thread.Sleep(1000);
-
-                processes = Process.GetProcessesByName("AcroRd32");
-                if (processes.Length > 0)
+                Boolean cpuGood = waitForCPU(15);
+                if (cpuGood)
                 {
-                    File.AppendAllText(@"C:\Users\edmund\Desktop\log.txt", "Found application!\n");
+                    //Thread.Sleep(1000);
 
-                    // try full screen it
-                    sendKeyToApplication(processes, "{ENTER}");
-                    Thread.Sleep(200);
-                    sendKeyToApplication(processes, "{ENTER}");
-                    Thread.Sleep(200);
-                    sendKeyToApplication(processes, "^(l)");
-                    Thread.Sleep(1000);
-
-                    // take screenshot
-                    screenshotSpecificWindow("Adobe Acrobat Reader DC", screenshotSavePath);
-                    //screenshotEntireScreen(screenshotSavePath);
-                    //string cropPath = @"C:\Users\edmund\Desktop\cropped.png";
-
-                    //CropImage(0, 0, 300, 100, screenshotSavePath, cropPath);
-                    // check if the screenshot located an error message
-                    //Boolean hasError = checkErrorMessage(cropPath);
-
-                    // close the application depending if there is an error
-
-                    // send enter command and full screen command
-                    logMessage("Closing the app\n");
-                    sendKeyToApplication(processes, "{ESC}");
-                    Thread.Sleep(500);
-                    sendKeyToApplication(processes, "{ENTER}");
-                    Thread.Sleep(200);
                     processes = Process.GetProcessesByName("AcroRd32");
-                    if (processes.Length == 0)
+                    if (processes.Length > 0)
                     {
-                        File.AppendAllText(@"C:\Users\edmund\Desktop\log.txt", "Crashed after full screen\n");
-                        status = false;
+                        File.AppendAllText(@"C:\Users\edmund\Desktop\log.txt", "Found application!\n");
+
+                        // try full screen it
+                        sendKeyToApplication(processes, "{ENTER}");
+                        Thread.Sleep(200);
+                        sendKeyToApplication(processes, "{ENTER}");
+                        Thread.Sleep(200);
+                        sendKeyToApplication(processes, "{HOME}");
+                        Thread.Sleep(200);
+                        sendKeyToApplication(processes, "^(l)");
+                        Thread.Sleep(1000);
+
+                        // take screenshot
+                        screenshotSpecificWindow("Adobe Acrobat Reader DC", screenshotSavePath);
+                        //screenshotEntireScreen(screenshotSavePath);
+                        //string cropPath = @"C:\Users\edmund\Desktop\cropped.png";
+
+                        //CropImage(0, 0, 300, 100, screenshotSavePath, cropPath);
+                        // check if the screenshot located an error message
+                        //Boolean hasError = checkErrorMessage(cropPath);
+
+                        // close the application depending if there is an error
+
+                        // send enter command and full screen command
+                        logMessage("Closing the app\n");
+                        sendKeyToApplication(processes, "{ESC}");
+                        Thread.Sleep(200);
+                        sendKeyToApplication(processes, "{ENTER}");
+                        Thread.Sleep(200);
+                        processes = Process.GetProcessesByName("AcroRd32");
+                        if (processes.Length == 0)
+                        {
+                            File.AppendAllText(@"C:\Users\edmund\Desktop\log.txt", "Crashed after full screen\n");
+                            status = false;
+                        }
+                        /*else
+                        {
+                            foreach (Process proc in processes)
+                            {
+                                // ShowWindow(proc.MainWindowHandle, 3);
+
+                                sendKeyToApplication(processes, "%{F4}");
+                                Thread.Sleep(1000);
+
+                                // sometimes it is blocked asking if you want to save
+                                processes = Process.GetProcessesByName("AcroRd32");
+                                if (processes.Length > 0)
+                                {
+                                    sendKeyToApplication(processes, "n");
+                                    Thread.Sleep(1000);
+                                }
+
+                                break;
+                            }
+                        }*/
                     }
                     else
                     {
-                        foreach (Process proc in processes)
-                        {
-                            // ShowWindow(proc.MainWindowHandle, 3);
-
-                            sendKeyToApplication(processes, "%{F4}");
-                            Thread.Sleep(1000);
-
-                            // sometimes it is blocked asking if you want to save
-                            processes = Process.GetProcessesByName("AcroRd32");
-                            if (processes.Length > 0)
-                            {
-                                sendKeyToApplication(processes, "n");
-                                Thread.Sleep(1000);
-                            }
-
-                            break;
-                        }
+                        logMessage("Crashed right after launch\n");
+                        status = false;
                     }
                 }
                 else
                 {
-                    logMessage("Crashed right after launch\n");
                     status = false;
-                }
 
-                // kill and clean environment before we start the screenshot
-                processes = Process.GetProcessesByName("AcroRd32");
-                killProcess(processes);
+                    logMessage("Entire program froze\n");
+                }
             }
 
-            Thread.Sleep(1000);
 
+            // kill and clean environment
+            Process[] processesEnd = Process.GetProcessesByName("AcroRd32");
+            killProcess(processesEnd);
+
+            Thread.Sleep(500);
+            
             watch.Stop();
             long elapsedMs = watch.ElapsedMilliseconds;
 
-            logMessage(status.ToString());
+            logMessage(status.ToString() + "\n");
+            logMessage((elapsedMs / 1000).ToString() + "\n");
             writeToCSV(Path.GetFileName(targetFile), status, elapsedMs);
         }
 
         private static void logMessage(String message)
         {
-            Console.WriteLine(message);
+            Console.Write(message);
             File.AppendAllText(@"C:\Users\edmund\Desktop\log.txt", message);
         }
 
@@ -479,12 +496,13 @@ namespace ConsoleApp1
             File.AppendAllText(@"C:\Users\edmund\Desktop\log.csv", newLine);
         }
 
-        private static void batchProcess()
+        private static void batchProcess(string sourcePath, string outputPath)
         {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+
             // get list of files from folder
-            //string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\files\chrome\", "*.pdf");
-            string[] filePaths = Directory.GetFiles(@"C:\Users\edmund\Desktop\testSuite\masterPool\", "*.pdf");
-            string screenshotFolder = @"C:\Users\edmund\Desktop\testSuite\screenshot\";
+            string[] filePaths = Directory.GetFiles(sourcePath, "*.pdf");
+            string screenshotFolder = outputPath;
 
             // check if screenshot folder exists
             try
@@ -532,13 +550,30 @@ namespace ConsoleApp1
                 index = index + 1;
             }
 
+            watch.Stop();
+            long elapsedMs = watch.ElapsedMilliseconds;
+
+            logMessage("Total execution time:\n");
+            logMessage((elapsedMs / 1000).ToString() + "\n");
+
         }
 
 
 
         static void Main()
         {
-            batchProcess();
+            batchProcess(@"C:\Users\edmund\Desktop\testSuite\test2", @"C:\Users\edmund\Desktop\screenshots\test\");
+
+            //batchProcess(@"C:\Users\edmund\Desktop\study5\chrome\", @"C:\Users\edmund\Desktop\screenshots\chrome\");
+            //batchProcess(@"C:\Users\edmund\Desktop\study5\apache\", @"C:\Users\edmund\Desktop\screenshots\apache\");
+            //batchProcess(@"C:\Users\edmund\Desktop\study5\freedesktop\", @"C:\Users\edmund\Desktop\screenshots\freedesktop\");
+            //batchProcess(@"C:\Users\edmund\Desktop\study5\ghostscript\", @"C:\Users\edmund\Desktop\screenshots\ghostscript\");
+            //batchProcess(@"C:\Users\edmund\Desktop\study5\gnome\", @"C:\Users\edmund\Desktop\screenshots\gnome\");
+            //batchProcess(@"C:\Users\edmund\Desktop\study5\govdocs\", @"C:\Users\edmund\Desktop\screenshots\govdocs\");
+            //batchProcess(@"C:\Users\edmund\Desktop\study5\kde\", @"C:\Users\edmund\Desktop\screenshots\kde\");
+            //batchProcess(@"C:\Users\edmund\Desktop\study5\launchpad\", @"C:\Users\edmund\Desktop\screenshots\launchpad\");
+            //batchProcess(@"C:\Users\edmund\Desktop\study5\mozilla\", @"C:\Users\edmund\Desktop\screenshots\mozilla\");
+            //string sourcePath = @"C:\Users\edmund\Desktop\testSuite\test2";
             /*
             foreach (Process PPath in Process.GetProcesses())
             {
