@@ -364,7 +364,7 @@ namespace ConsoleApp1
             Boolean status = true;
 
             String pureFileName = Path.GetFileName(targetFile);
-            String screenshotSavePath = screenshotFolder + pureFileName.Substring(0, pureFileName.Length - 4) + "-acroread.png";
+            String screenshotSavePath = screenshotFolder + pureFileName.Substring(0, pureFileName.Length - 4) + ".png";
             //String screenshotSavePath = screenshotFolder + "screenshot.png";
             Console.WriteLine(screenshotSavePath);
 
@@ -442,6 +442,8 @@ namespace ConsoleApp1
                                 sendKeyToApplication(processes, "n");
                                 Thread.Sleep(1000);
                             }
+
+                            break;
                         }
                     }
                 }
