@@ -357,17 +357,15 @@ namespace ConsoleApp1
 
         private static void processFile(string targetFile, string screenshotFolder)
         {
-            /*
-            foreach (Process PPath in Process.GetProcesses())
-            {
-                Console.WriteLine(PPath.ProcessName.ToString());
-            }
-            */
 
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            Boolean status = true;
+            Process[] processesFault = Process.GetProcessesByName("WerFault");
+            killProcess(processesFault);
+            Thread.Sleep(100);
 
+            Boolean status = true;
+            Boolean exceptionOccured = false;
             String pureFileName = Path.GetFileName(targetFile);
             String screenshotSavePath = screenshotFolder + pureFileName.Substring(0, pureFileName.Length - 4) + ".png";
             //String screenshotSavePath = screenshotFolder + "screenshot.png";
@@ -390,11 +388,15 @@ namespace ConsoleApp1
                 // send esc in the case that it crashed
                 sendKeyToApplication(processes, "{ESC}");
                 Thread.Sleep(200);
-
-                Boolean cpuGood = waitForCPU(15);
+                
+                Boolean cpuGood = waitForCPU(10);
                 if (cpuGood)
                 {
                     //Thread.Sleep(1000);
+
+                    Process[] processesFault3 = Process.GetProcessesByName("WerFault");
+                    killProcess(processesFault3);
+                    Thread.Sleep(100);
 
                     processes = Process.GetProcessesByName("AcroRd32");
                     if (processes.Length > 0)
@@ -405,11 +407,11 @@ namespace ConsoleApp1
                         sendKeyToApplication(processes, "{ENTER}");
                         Thread.Sleep(200);
                         sendKeyToApplication(processes, "{ENTER}");
-                        Thread.Sleep(200);
+                        Thread.Sleep(400);
                         sendKeyToApplication(processes, "{HOME}");
                         Thread.Sleep(200);
                         sendKeyToApplication(processes, "^(l)");
-                        Thread.Sleep(1000);
+                        Thread.Sleep(2000);
 
                         // take screenshot
                         screenshotSpecificWindow("Adobe Acrobat Reader DC", screenshotSavePath);
@@ -464,17 +466,34 @@ namespace ConsoleApp1
                 else
                 {
                     status = false;
-
+                    exceptionOccured = true;
                     logMessage("Entire program froze\n");
                 }
             }
 
+            if (exceptionOccured)
+            {
+                // kill and clean environment
+                Process[] processesEnd = Process.GetProcessesByName("AcroRd32");
+                killProcess(processesEnd);
 
-            // kill and clean environment
-            Process[] processesEnd = Process.GetProcessesByName("AcroRd32");
-            killProcess(processesEnd);
+                Console.WriteLine("Exception in windows, killing it and sleeping 5 seconds");
+                Thread.Sleep(500);
 
-            Thread.Sleep(500);
+                Process[] processesFault2 = Process.GetProcessesByName("WerFault");
+                killProcess(processesFault2);
+                Thread.Sleep(500);
+
+            } else
+            {
+                // kill and clean environment
+                Process[] processesEnd = Process.GetProcessesByName("AcroRd32");
+                killProcess(processesEnd);
+
+                Thread.Sleep(500);
+            }
+
+
             
             watch.Stop();
             long elapsedMs = watch.ElapsedMilliseconds;
@@ -498,6 +517,12 @@ namespace ConsoleApp1
 
         private static void batchProcess(string sourcePath, string outputPath)
         {
+
+            foreach (Process PPath in Process.GetProcesses())
+            {
+                Console.WriteLine(PPath.ProcessName.ToString());
+            }
+
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
             // get list of files from folder
@@ -546,7 +571,7 @@ namespace ConsoleApp1
                 logMessage(pdfFilePath + "\n");
 
                 processFile(pdfFilePath, screenshotFolder);
-
+                
                 index = index + 1;
             }
 
@@ -562,17 +587,32 @@ namespace ConsoleApp1
 
         static void Main()
         {
-            batchProcess(@"C:\Users\edmund\Desktop\testSuite\test2", @"C:\Users\edmund\Desktop\screenshots\test\");
+            //batchProcess(@"C:\Users\edmund\Desktop\testSuite\test2", @"C:\Users\edmund\Desktop\screenshots\test\");
 
-            //batchProcess(@"C:\Users\edmund\Desktop\study5\chrome\", @"C:\Users\edmund\Desktop\screenshots\chrome\");
-            //batchProcess(@"C:\Users\edmund\Desktop\study5\apache\", @"C:\Users\edmund\Desktop\screenshots\apache\");
-            //batchProcess(@"C:\Users\edmund\Desktop\study5\freedesktop\", @"C:\Users\edmund\Desktop\screenshots\freedesktop\");
-            //batchProcess(@"C:\Users\edmund\Desktop\study5\ghostscript\", @"C:\Users\edmund\Desktop\screenshots\ghostscript\");
-            //batchProcess(@"C:\Users\edmund\Desktop\study5\gnome\", @"C:\Users\edmund\Desktop\screenshots\gnome\");
-            //batchProcess(@"C:\Users\edmund\Desktop\study5\govdocs\", @"C:\Users\edmund\Desktop\screenshots\govdocs\");
-            //batchProcess(@"C:\Users\edmund\Desktop\study5\kde\", @"C:\Users\edmund\Desktop\screenshots\kde\");
-            //batchProcess(@"C:\Users\edmund\Desktop\study5\launchpad\", @"C:\Users\edmund\Desktop\screenshots\launchpad\");
-            //batchProcess(@"C:\Users\edmund\Desktop\study5\mozilla\", @"C:\Users\edmund\Desktop\screenshots\mozilla\");
+            
+            batchProcess(@"C:\Users\edmund\Desktop\study5\chrome\", @"C:\Users\edmund\Desktop\screenshots\chrome\");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\apache\", @"C:\Users\edmund\Desktop\screenshots\apache\");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\freedesktop\", @"C:\Users\edmund\Desktop\screenshots\freedesktop\");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\ghostscript\", @"C:\Users\edmund\Desktop\screenshots\ghostscript\");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\gnome\", @"C:\Users\edmund\Desktop\screenshots\gnome\");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\govdocs\", @"C:\Users\edmund\Desktop\screenshots\govdocs\");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\kde\", @"C:\Users\edmund\Desktop\screenshots\kde\");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\launchpad\", @"C:\Users\edmund\Desktop\screenshots\launchpad\");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\mozilla\", @"C:\Users\edmund\Desktop\screenshots\mozilla\");
+
+            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted1_1", @"C:\Users\edmund\Desktop\screenshots\corrupted1_1");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted1_2", @"C:\Users\edmund\Desktop\screenshots\corrupted1_2");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted1_4", @"C:\Users\edmund\Desktop\screenshots\corrupted1_4");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted1_8", @"C:\Users\edmund\Desktop\screenshots\corrupted1_8");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted1_16", @"C:\Users\edmund\Desktop\screenshots\corrupted1_16");
+
+            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted2_1", @"C:\Users\edmund\Desktop\screenshots\corrupted2_1");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted2_2", @"C:\Users\edmund\Desktop\screenshots\corrupted2_2");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted2_4", @"C:\Users\edmund\Desktop\screenshots\corrupted2_4");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted2_8", @"C:\Users\edmund\Desktop\screenshots\corrupted2_8");
+            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted2_16", @"C:\Users\edmund\Desktop\screenshots\corrupted2_16");
+            
+
             //string sourcePath = @"C:\Users\edmund\Desktop\testSuite\test2";
             /*
             foreach (Process PPath in Process.GetProcesses())
