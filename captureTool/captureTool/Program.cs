@@ -407,11 +407,11 @@ namespace ConsoleApp1
                         sendKeyToApplication(processes, "{ENTER}");
                         Thread.Sleep(200);
                         sendKeyToApplication(processes, "{ENTER}");
-                        Thread.Sleep(400);
+                        Thread.Sleep(200);
                         sendKeyToApplication(processes, "{HOME}");
                         Thread.Sleep(200);
                         sendKeyToApplication(processes, "^(l)");
-                        Thread.Sleep(2000);
+                        Thread.Sleep(1000);
 
                         // take screenshot
                         screenshotSpecificWindow("Adobe Acrobat Reader DC", screenshotSavePath);
