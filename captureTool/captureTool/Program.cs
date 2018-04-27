@@ -99,6 +99,7 @@ namespace ConsoleApp1
             {
                 Image img = CaptureWindow(handle);
                 img.Save(filename, format);
+                img.Dispose();
             }
             /// <summary>
             /// Captures a screen shot of the entire desktop, and saves it to a file
@@ -327,12 +328,11 @@ namespace ConsoleApp1
             totalCPU.NextValue(); // will always be 0
             System.Threading.Thread.Sleep(1000);
             usage = totalCPU.NextValue();
-            logMessage("CPU @ " + usage + "%\n");
 
             return usage;
         }
 
-        private static Boolean waitForCPU(int numTriesMax)
+        private static Boolean waitForCPU(int numTriesMax, String screenshotFolder)
         {
             Boolean status = false;
 
@@ -340,7 +340,8 @@ namespace ConsoleApp1
             while (numTries < numTriesMax)
             {
                 float usageValue = getCpuUsage();
-                if (usageValue > 15)
+                logMessage("CPU @ " + usageValue + "%\n", screenshotFolder);
+                if (usageValue >= 10)
                 {
                     Thread.Sleep(1000);
                 }
@@ -359,13 +360,12 @@ namespace ConsoleApp1
         {
 
             var watch = System.Diagnostics.Stopwatch.StartNew();
-
+            
             Process[] processesFault = Process.GetProcessesByName("WerFault");
             killProcess(processesFault);
             Thread.Sleep(100);
 
             Boolean status = true;
-            Boolean exceptionOccured = false;
             String pureFileName = Path.GetFileName(targetFile);
             String screenshotSavePath = screenshotFolder + pureFileName.Substring(0, pureFileName.Length - 4) + ".png";
             //String screenshotSavePath = screenshotFolder + "screenshot.png";
@@ -378,7 +378,7 @@ namespace ConsoleApp1
                 status = false;
             } else
             {
-                Thread.Sleep(1000);
+                Thread.Sleep(500);
                 Process[] processes = Process.GetProcessesByName("AcroRd32");
                 foreach (Process proc in processes)
                 {
@@ -389,14 +389,16 @@ namespace ConsoleApp1
                 sendKeyToApplication(processes, "{ESC}");
                 Thread.Sleep(200);
                 
-                Boolean cpuGood = waitForCPU(10);
+                Boolean cpuGood = waitForCPU(20, screenshotFolder);
                 if (cpuGood)
                 {
                     //Thread.Sleep(1000);
 
+                    /*
                     Process[] processesFault3 = Process.GetProcessesByName("WerFault");
                     killProcess(processesFault3);
                     Thread.Sleep(100);
+                    */
 
                     processes = Process.GetProcessesByName("AcroRd32");
                     if (processes.Length > 0)
@@ -411,7 +413,7 @@ namespace ConsoleApp1
                         sendKeyToApplication(processes, "{HOME}");
                         Thread.Sleep(200);
                         sendKeyToApplication(processes, "^(l)");
-                        Thread.Sleep(1000);
+                        Thread.Sleep(2000);
 
                         // take screenshot
                         screenshotSpecificWindow("Adobe Acrobat Reader DC", screenshotSavePath);
@@ -425,7 +427,7 @@ namespace ConsoleApp1
                         // close the application depending if there is an error
 
                         // send enter command and full screen command
-                        logMessage("Closing the app\n");
+                        logMessage("Closing the app\n", screenshotFolder);
                         sendKeyToApplication(processes, "{ESC}");
                         Thread.Sleep(200);
                         sendKeyToApplication(processes, "{ENTER}");
@@ -459,60 +461,47 @@ namespace ConsoleApp1
                     }
                     else
                     {
-                        logMessage("Crashed right after launch\n");
+                        logMessage("Crashed right after launch\n", screenshotFolder);
                         status = false;
                     }
                 }
                 else
                 {
                     status = false;
-                    exceptionOccured = true;
-                    logMessage("Entire program froze\n");
+                    logMessage("Entire program froze\n", screenshotFolder);
                 }
             }
 
-            if (exceptionOccured)
-            {
-                // kill and clean environment
-                Process[] processesEnd = Process.GetProcessesByName("AcroRd32");
-                killProcess(processesEnd);
 
-                Console.WriteLine("Exception in windows, killing it and sleeping 5 seconds");
-                Thread.Sleep(500);
+            // kill and clean environment
+            Process[] processesEnd = Process.GetProcessesByName("AcroRd32");
+            killProcess(processesEnd);
 
-                Process[] processesFault2 = Process.GetProcessesByName("WerFault");
-                killProcess(processesFault2);
-                Thread.Sleep(500);
+            Console.WriteLine("Exception in windows, killing it and sleeping 5 seconds");
+            Thread.Sleep(500);
 
-            } else
-            {
-                // kill and clean environment
-                Process[] processesEnd = Process.GetProcessesByName("AcroRd32");
-                killProcess(processesEnd);
-
-                Thread.Sleep(500);
-            }
-
-
+            Process[] processesFault2 = Process.GetProcessesByName("WerFault");
+            killProcess(processesFault2);
+            Thread.Sleep(500);
             
             watch.Stop();
             long elapsedMs = watch.ElapsedMilliseconds;
 
-            logMessage(status.ToString() + "\n");
-            logMessage((elapsedMs / 1000).ToString() + "\n");
-            writeToCSV(Path.GetFileName(targetFile), status, elapsedMs);
+            logMessage(status.ToString() + "\n", screenshotFolder);
+            logMessage((elapsedMs / 1000).ToString() + "\n", screenshotFolder);
+            writeToCSV(Path.GetFileName(targetFile), status, elapsedMs, screenshotFolder);
         }
 
-        private static void logMessage(String message)
+        private static void logMessage(String message, String screenshotFolder)
         {
             Console.Write(message);
-            File.AppendAllText(@"C:\Users\edmund\Desktop\log.txt", message);
+            File.AppendAllText(screenshotFolder + "log.txt", message);
         }
 
-        private static void writeToCSV(String fileName, Boolean result, long elapsedMs)
+        private static void writeToCSV(String fileName, Boolean result, long elapsedMs, String screenshotFolder)
         {
             var newLine = string.Format("{0},{1},{2}\n", fileName, (float)elapsedMs / 1000, result);
-            File.AppendAllText(@"C:\Users\edmund\Desktop\log.csv", newLine);
+            File.AppendAllText(screenshotFolder + "log.csv", newLine);
         }
 
         private static void batchProcess(string sourcePath, string outputPath)
@@ -567,10 +556,12 @@ namespace ConsoleApp1
             int index = 1;
             foreach (string pdfFilePath in filePaths)
             {
-                logMessage("\n\n" + index + "/" + filePaths.Length + "\n");
-                logMessage(pdfFilePath + "\n");
+                logMessage("\n\n" + index + "/" + filePaths.Length + "\n", screenshotFolder);
+                logMessage(pdfFilePath + "\n", screenshotFolder);
 
                 processFile(pdfFilePath, screenshotFolder);
+
+                
                 
                 index = index + 1;
             }
@@ -578,8 +569,8 @@ namespace ConsoleApp1
             watch.Stop();
             long elapsedMs = watch.ElapsedMilliseconds;
 
-            logMessage("Total execution time:\n");
-            logMessage((elapsedMs / 1000).ToString() + "\n");
+            logMessage("Total execution time:\n", screenshotFolder);
+            logMessage((elapsedMs / 1000).ToString() + "\n", screenshotFolder);
 
         }
 
@@ -587,31 +578,33 @@ namespace ConsoleApp1
 
         static void Main()
         {
-            //batchProcess(@"C:\Users\edmund\Desktop\testSuite\test2", @"C:\Users\edmund\Desktop\screenshots\test\");
+            batchProcess(@"C:\Users\edmund\Desktop\testSuite\test2", @"C:\Users\edmund\Desktop\screenshots\test\");
 
-            
-            batchProcess(@"C:\Users\edmund\Desktop\study5\chrome\", @"C:\Users\edmund\Desktop\screenshots\chrome\");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\apache\", @"C:\Users\edmund\Desktop\screenshots\apache\");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\freedesktop\", @"C:\Users\edmund\Desktop\screenshots\freedesktop\");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\ghostscript\", @"C:\Users\edmund\Desktop\screenshots\ghostscript\");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\gnome\", @"C:\Users\edmund\Desktop\screenshots\gnome\");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\govdocs\", @"C:\Users\edmund\Desktop\screenshots\govdocs\");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\kde\", @"C:\Users\edmund\Desktop\screenshots\kde\");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\launchpad\", @"C:\Users\edmund\Desktop\screenshots\launchpad\");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\mozilla\", @"C:\Users\edmund\Desktop\screenshots\mozilla\");
+            //batchProcess(@"C:\Users\edmund\Desktop\phase2\chrome\", @"C:\Users\edmund\Desktop\screenshots\chromeP2\");
 
-            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted1_1", @"C:\Users\edmund\Desktop\screenshots\corrupted1_1");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted1_2", @"C:\Users\edmund\Desktop\screenshots\corrupted1_2");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted1_4", @"C:\Users\edmund\Desktop\screenshots\corrupted1_4");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted1_8", @"C:\Users\edmund\Desktop\screenshots\corrupted1_8");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted1_16", @"C:\Users\edmund\Desktop\screenshots\corrupted1_16");
+            //batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\chrome\", @"C:\Users\edmund\Desktop\screenshots\chrome\");
+            /*
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\apache\", @"C:\Users\edmund\Desktop\screenshots\apache\");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\freedesktop\", @"C:\Users\edmund\Desktop\screenshots\freedesktop\");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\ghostscript\", @"C:\Users\edmund\Desktop\screenshots\ghostscript\");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\gnome\", @"C:\Users\edmund\Desktop\screenshots\gnome\");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\govdocs\", @"C:\Users\edmund\Desktop\screenshots\govdocs\");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\kde\", @"C:\Users\edmund\Desktop\screenshots\kde\");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\launchpad\", @"C:\Users\edmund\Desktop\screenshots\launchpad\");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\mozilla\", @"C:\Users\edmund\Desktop\screenshots\mozilla\");
 
-            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted2_1", @"C:\Users\edmund\Desktop\screenshots\corrupted2_1");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted2_2", @"C:\Users\edmund\Desktop\screenshots\corrupted2_2");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted2_4", @"C:\Users\edmund\Desktop\screenshots\corrupted2_4");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted2_8", @"C:\Users\edmund\Desktop\screenshots\corrupted2_8");
-            batchProcess(@"C:\Users\edmund\Desktop\study5\forceopen\corrupted2_16", @"C:\Users\edmund\Desktop\screenshots\corrupted2_16");
-            
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\forceopen\corrupted1_1\", @"C:\Users\edmund\Desktop\screenshots\corrupted1_1");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\forceopen\corrupted1_2\", @"C:\Users\edmund\Desktop\screenshots\corrupted1_2");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\forceopen\corrupted1_4\", @"C:\Users\edmund\Desktop\screenshots\corrupted1_4");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\forceopen\corrupted1_8\", @"C:\Users\edmund\Desktop\screenshots\corrupted1_8");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\forceopen\corrupted1_16\", @"C:\Users\edmund\Desktop\screenshots\corrupted1_16");
+
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\forceopen\corrupted2_1\", @"C:\Users\edmund\Desktop\screenshots\corrupted2_1");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\forceopen\corrupted2_2\", @"C:\Users\edmund\Desktop\screenshots\corrupted2_2");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\forceopen\corrupted2_4\", @"C:\Users\edmund\Desktop\screenshots\corrupted2_4");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\forceopen\corrupted2_8\", @"C:\Users\edmund\Desktop\screenshots\corrupted2_8");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\forceopen\corrupted2_16\", @"C:\Users\edmund\Desktop\screenshots\corrupted2_16");
+            */
 
             //string sourcePath = @"C:\Users\edmund\Desktop\testSuite\test2";
             /*
