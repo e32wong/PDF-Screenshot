@@ -341,7 +341,7 @@ namespace ConsoleApp1
             {
                 float usageValue = getCpuUsage();
                 logMessage("CPU @ " + usageValue + "%\n", screenshotFolder);
-                if (usageValue >= 10)
+                if (usageValue >= 15)
                 {
                     Thread.Sleep(1000);
                 }
@@ -392,7 +392,7 @@ namespace ConsoleApp1
                 Boolean cpuGood = waitForCPU(20, screenshotFolder);
                 if (cpuGood)
                 {
-                    //Thread.Sleep(1000);
+                    Thread.Sleep(500);
 
                     /*
                     Process[] processesFault3 = Process.GetProcessesByName("WerFault");
@@ -407,11 +407,11 @@ namespace ConsoleApp1
 
                         // try full screen it
                         sendKeyToApplication(processes, "{ENTER}");
-                        Thread.Sleep(200);
+                        Thread.Sleep(500);
                         sendKeyToApplication(processes, "{ENTER}");
-                        Thread.Sleep(200);
+                        Thread.Sleep(500);
                         sendKeyToApplication(processes, "{HOME}");
-                        Thread.Sleep(200);
+                        Thread.Sleep(500);
                         sendKeyToApplication(processes, "^(l)");
                         Thread.Sleep(2000);
 
@@ -477,7 +477,6 @@ namespace ConsoleApp1
             Process[] processesEnd = Process.GetProcessesByName("AcroRd32");
             killProcess(processesEnd);
 
-            Console.WriteLine("Exception in windows, killing it and sleeping 5 seconds");
             Thread.Sleep(500);
 
             Process[] processesFault2 = Process.GetProcessesByName("WerFault");
@@ -578,11 +577,19 @@ namespace ConsoleApp1
 
         static void Main()
         {
-            batchProcess(@"C:\Users\edmund\Desktop\testSuite\test2", @"C:\Users\edmund\Desktop\screenshots\test\");
 
-            //batchProcess(@"C:\Users\edmund\Desktop\phase2\chrome\", @"C:\Users\edmund\Desktop\screenshots\chromeP2\");
+            //batchProcess(@"C:\Users\edmund\Desktop\testSuite\test2", @"C:\Users\edmund\Desktop\screenshots\test\");
 
             //batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\chrome\", @"C:\Users\edmund\Desktop\screenshots\chrome\");
+
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\sample1\", @"C:\Users\edmund\Desktop\screenshots\sample1\");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\sample2\", @"C:\Users\edmund\Desktop\screenshots\sample2\");
+
+            /*
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\criticalChrome\", @"C:\Users\edmund\Desktop\screenshots\criticalChrome\");
+            batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\criticalApache\", @"C:\Users\edmund\Desktop\screenshots\criticalApache\");
+            */
+
             /*
             batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\apache\", @"C:\Users\edmund\Desktop\screenshots\apache\");
             batchProcess(@"C:\Users\edmund\Desktop\filteredFiles\freedesktop\", @"C:\Users\edmund\Desktop\screenshots\freedesktop\");
